@@ -38,9 +38,9 @@
 
 <MudTable Elevation="25" Items="@Categories" Filter="new Func<Categories, bool>(Search)" @bind-SelectedItem="category">
     <ToolBarContent>
-        <MudText Typo="Typo.h6">Customers</MudText>
-        <MudToolBarSpacer />
-        <MudTextField @bind-Value="searchString" Placeholder="Search for Customers..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        <MudText Typo="Typo.h6">Categories</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="searchString" Placeholder="Search for Categories..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <HeaderContent>
         <MudTh>Category Name</MudTh>
@@ -52,7 +52,11 @@
     <RowTemplate>
         <MudTd DataLabel="Category Name">@context.CategoryName</MudTd>
         <MudTd DataLabel="Image Name">@context.ImageName</MudTd>
-        <MudTd DataLabel="Image URL">@context.ImageUrl</MudTd>
+        <MudTd>
+            <img src="@context.ImageUrl" alt="@context.ImageName" style="width: 100px; height: 100px;" />
+        </MudTd>
+
+
         <MudTd DataLabel="Image Format">@context.ImageFormat</MudTd>
         <MudTd DataLabel="">
             <MudIconButton @onclick="@(() => Edit(@context.CategoryId))" Color="Color.Primary" Icon="@Icons.Material.Filled.Edit" Size="Size.Small" IconSize="Size.Small" />
@@ -66,7 +70,7 @@
     private Categories category = new Categories();
     private List<Categories> Categories = new List<Categories>();
     private IBrowserFile uploadedFile;
-
+    private bool isEdit = false; 
     protected override async Task OnInitializedAsync()
     {
         await GetCategories();
@@ -86,15 +90,25 @@
 
     private async Task Save()
     {
-        await categoryService.AddcategoryAsync(category);
+        if (isEdit)
+        {
+            await categoryService.UpdateCategoryAsync(category); // Call the update method
+            snackBar.Add("Category Updated.", Severity.Success);
+        }
+        else
+        {
+            await categoryService.AddcategoryAsync(category);
+            snackBar.Add("Category Saved.", Severity.Success);
+        }
         category = new Categories();
-        snackBar.Add("Category Saved.", Severity.Success);
+        isEdit = false;
         await GetCategories();
     }
 
     private void Edit(int categoryId)
     {
         category = Categories.FirstOrDefault(c => c.CategoryId == categoryId);
+        isEdit = true; 
     }
 
     private async Task Delete(int categoryId)

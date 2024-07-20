@@ -24,16 +24,13 @@
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudSelect T="int" Label="Category" @bind-Value="subCategory.CategoryId">
+                    <MudSelectItem Value="0">Select Parent Category</MudSelectItem>
                     @if (categories.Any())
                     {
                         @foreach (var category in categories)
                         {
                             <MudSelectItem Value="@category.CategoryId">@category.CategoryName</MudSelectItem>
                         }
-                    }
-                    else
-                    {
-                        <MudSelectItem Value="0">Select Parent Category</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -71,6 +68,7 @@
     private SubCategories subCategory = new SubCategories();
     private List<SubCategories> SubCategories = new List<SubCategories>();
     private List<Categories> categories = new List<Categories>();
+    private bool isEdit = false; 
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,13 +87,13 @@
         var categoryList = await categoryService.GetCategoriesAsync();
 
         SubCategories = subCategories.Select(sc => new SubCategories
-        {
-            SubCategoryId = sc.SubCategoryId,
-            Name = sc.Name,
-            CategoryName = categoryList.FirstOrDefault(c => c.CategoryId == sc.CategoryId)?.CategoryName
-        }).ToList();
+            {
+                SubCategoryId = sc.SubCategoryId,
+                Name = sc.Name,
+                CategoryId=sc.CategoryId,
+                CategoryName = categoryList.FirstOrDefault(c => c.CategoryId == sc.CategoryId)?.CategoryName 
+            }).ToList();
     }
-
 
     private bool Search(SubCategories subCategory)
     {
@@ -105,15 +103,25 @@
 
     private async Task Save()
     {
-        await subCategoryService.AddSubcategoryAsync(subCategory);
+        if (isEdit)
+        {
+            await subCategoryService.UpdateSubCategoryAsync(subCategory); 
+            snackBar.Add("SubCategory Updated.", Severity.Success);
+        }
+        else
+        {
+            await subCategoryService.AddSubcategoryAsync(subCategory);
+            snackBar.Add("SubCategory Saved.", Severity.Success);
+        }
         subCategory = new SubCategories();
-        snackBar.Add("SubCategory Saved.", Severity.Success);
+        isEdit = false;
         await GetSubCategories();
     }
 
     private void Edit(int subCategoryId)
     {
         subCategory = SubCategories.FirstOrDefault(c => c.SubCategoryId == subCategoryId);
+        isEdit = true; 
     }
 
     private async Task Delete(int subCategoryId)
