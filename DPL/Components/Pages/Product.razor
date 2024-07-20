@@ -25,6 +25,7 @@
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudSelect T="int" @bind-Value="product.SubCategoryID" Label="Select Subcategory">
+                    <MudSelectItem Value="0">Select SubCategory</MudSelectItem>
                     @if (subcategories != null && subcategories.Any())
                     {
                         @foreach (var subcategory in subcategories)
@@ -75,18 +76,18 @@
     }
     private async Task LoadProductsAsync()
     {
-        products = await productService.GetProductsAsync();
+        var productList = await productService.GetProductsAsync();
         var subCategories = await subcategoryService.GetsubCategoriessAsync();
 
-        products = products.Select(p => new Products
-        {
-            ProductID = p.ProductID,
-            ProductName = p.ProductName,
-            Amount = p.Amount,
-            SubCategoryName = subCategories.FirstOrDefault(sc => sc.SubCategoryId == p.SubCategoryID)?.Name
-        }).ToList();
+        products = productList.Select(p => new Products
+            {
+                ProductID = p.ProductID,
+                ProductName = p.ProductName,
+                Amount = p.Amount,
+                SubCategoryID = p.SubCategoryID, 
+                SubCategoryName = subCategories.FirstOrDefault(sc => sc.SubCategoryId == p.SubCategoryID)?.Name
+            }).ToList();
     }
-
 
     private async Task LoadSubcategoriesAsync()
     {
@@ -97,10 +98,18 @@
     {
         try
         {
-            await productService.AddProductAsync(product);
-            product = new Products();
-            snackBar.Add("Product Saved.", Severity.Success);
-            await LoadProductsAsync();
+            if (product.ProductID == 0)
+            {
+                await productService.AddProductAsync(product);
+                snackBar.Add("Product Added.", Severity.Success);
+            }
+            else
+            {
+                await productService.UpdateProductAsync(product);
+                snackBar.Add("Product Updated.", Severity.Success);
+            }
+            product = new Products(); 
+            await LoadProductsAsync(); 
         }
         catch (Exception ex)
         {
@@ -110,13 +119,20 @@
 
     private void Edit(int id)
     {
-        product = products.FirstOrDefault(p => p.ProductID == id);
+        product = products.FirstOrDefault(p => p.ProductID == id) ?? new Products();
     }
 
     private async Task Delete(int id)
     {
-        await productService.DeleteProductAsync(id);
-        snackBar.Add("Product Deleted.", Severity.Success);
-        await LoadProductsAsync();
+        try
+        {
+            await productService.DeleteProductAsync(id);
+            snackBar.Add("Product Deleted.", Severity.Success);
+            await LoadProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            snackBar.Add($"Error deleting product: {ex.Message}", Severity.Error);
+        }
     }
 }
