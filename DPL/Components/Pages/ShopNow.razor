@@ -1,0 +1,58 @@
+﻿@page "/shopnow"
+@using MudBlazor
+@inject MudBlazor.ISnackbar snackBar
+@using DPL.Services
+@using DPL.Models
+@inject CartService CartService
+@inject ProductService productService
+@rendermode InteractiveServer
+<h3>Shop Now</h3>
+
+<MudGrid>
+    @foreach (var product in Products)
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="4">
+                <MudCardMedia Style="background-image: url('/images/logo.jpg'); height: 300px; background-size: cover;" />
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">@product.ProductName</MudText>
+                    <MudText Typo="Typo.body1">This is Product Description</MudText>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField @bind-Value="product.Quantity" Label="Quantity" Variant="Variant.Text" Margin="Margin.Normal"></MudNumericField>
+                    </MudItem>
+                    <MudText Typo="Typo.h6">$@product.Amount</MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => Buy(product.ProductID)">
+                            Buy Now
+                        </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter]
+    public List<Products> Products { get; set; } = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProductsAsync();
+    }
+    private async Task LoadProductsAsync()
+    {
+        Products = await productService.GetProductsAsync();
+    }
+    private void Buy(int productId)
+    {
+        var product = Products.FirstOrDefault(x => x.ProductID == productId);
+        var cartItem = new CartItem
+        {
+            ProductId = product.ProductID,
+            ProductName = product.ProductName,
+            Price = product.Amount,
+            Quantity = product.Quantity
+        };
+        CartService.AddToCart(cartItem);
+        snackBar.Add("Product added to cart.", Severity.Success);
+    }
+}

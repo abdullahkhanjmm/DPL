@@ -1,0 +1,122 @@
+﻿@page "/products"
+
+@inject MudBlazor.ISnackbar snackBar
+@inject ProductService productService
+@inject SubCategoryService subcategoryService
+@rendermode InteractiveServer
+
+@attribute [Authorize]
+
+<h3>Manage Products</h3>
+
+<MudCard Elevation="25">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Add / Edit Products</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="product.ProductName" Label="Product Name" Variant="Variant.Text" Margin="Margin.Normal"></MudTextField>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="product.Amount" Label="Amount" Variant="Variant.Text" Margin="Margin.Normal"></MudNumericField>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int" @bind-Value="product.SubCategoryID" Label="Select Subcategory">
+                    @if (subcategories != null && subcategories.Any())
+                    {
+                        @foreach (var subcategory in subcategories)
+                        {
+                            <MudSelectItem Value="@subcategory.SubCategoryId">
+                                @subcategory.Name
+                            </MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        <br />
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save">Save Product</MudButton>
+    </MudCardContent>
+</MudCard>
+
+@if (products != null && products.Any())
+{
+    <MudTable Items="products" Hover="true" Striped="true">
+        <HeaderContent>
+            <MudTh>Product Name</MudTh>
+            <MudTh>Amount</MudTh>
+            <MudTh>Subcategory</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.ProductName</MudTd>
+            <MudTd>@context.Amount</MudTd>
+            <MudTd>@context.SubCategoryName</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => Edit(context.ProductID))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => Delete(context.ProductID))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private Products product = new Products();
+    private List<Products> products = new List<Products>();
+    private List<SubCategories> subcategories = new List<SubCategories>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProductsAsync();
+        await LoadSubcategoriesAsync();
+    }
+    private async Task LoadProductsAsync()
+    {
+        products = await productService.GetProductsAsync();
+        var subCategories = await subcategoryService.GetsubCategoriessAsync();
+
+        products = products.Select(p => new Products
+        {
+            ProductID = p.ProductID,
+            ProductName = p.ProductName,
+            Amount = p.Amount,
+            SubCategoryName = subCategories.FirstOrDefault(sc => sc.SubCategoryId == p.SubCategoryID)?.Name
+        }).ToList();
+    }
+
+
+    private async Task LoadSubcategoriesAsync()
+    {
+        subcategories = await subcategoryService.GetsubCategoriessAsync();
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            await productService.AddProductAsync(product);
+            product = new Products();
+            snackBar.Add("Product Saved.", Severity.Success);
+            await LoadProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            snackBar.Add($"Error saving product: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Edit(int id)
+    {
+        product = products.FirstOrDefault(p => p.ProductID == id);
+    }
+
+    private async Task Delete(int id)
+    {
+        await productService.DeleteProductAsync(id);
+        snackBar.Add("Product Deleted.", Severity.Success);
+        await LoadProductsAsync();
+    }
+}

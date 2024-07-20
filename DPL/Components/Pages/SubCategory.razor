@@ -1,0 +1,125 @@
+﻿@page "/SubCategory"
+@using MudBlazor
+@using DPL.Models
+@using DPL.Services
+@using Microsoft.AspNetCore.Authorization
+@inject MudBlazor.ISnackbar snackBar
+@inject SubCategoryService subCategoryService
+@inject CategoryService categoryService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+@attribute [Authorize]
+<h3>Manage SubCategories</h3>
+<MudCard Elevation="25">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Add / Edit SubCategories</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="subCategory.Name" Label="SubCategory Name" Variant="Variant.Text" Margin="Margin.Normal"></MudTextField>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int" Label="Category" @bind-Value="subCategory.CategoryId">
+                    @if (categories.Any())
+                    {
+                        @foreach (var category in categories)
+                        {
+                            <MudSelectItem Value="@category.CategoryId">@category.CategoryName</MudSelectItem>
+                        }
+                    }
+                    else
+                    {
+                        <MudSelectItem Value="0">Select Parent Category</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        <br />
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save">Save SubCategory</MudButton>
+    </MudCardContent>
+</MudCard>
+
+<MudTable Elevation="25" Items="@SubCategories" Filter="new Func<SubCategories, bool>(Search)" @bind-SelectedItem="subCategory">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">SubCategories</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="searchString" Placeholder="Search for SubCategories..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>SubCategory Name</MudTh>
+        <MudTh>Category Name</MudTh>
+        <MudTh>Category ID</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="SubCategory Name">@context.Name</MudTd>
+        <MudTd DataLabel="Category Name">@context.CategoryName</MudTd>
+        <MudTd DataLabel="Category ID">@context.CategoryId</MudTd>
+        <MudTd DataLabel="">
+            <MudIconButton @onclick="@(() => Edit(@context.SubCategoryId))" Color="Color.Primary" Icon="@Icons.Material.Filled.Edit" Size="Size.Small" IconSize="Size.Small" />
+            <MudIconButton @onclick="@(() => Delete(@context.SubCategoryId))" Color="Color.Secondary" Icon="@Icons.Material.Filled.Delete" Size="Size.Small" IconSize="Size.Small" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private string searchString = "";
+    private SubCategories subCategory = new SubCategories();
+    private List<SubCategories> SubCategories = new List<SubCategories>();
+    private List<Categories> categories = new List<Categories>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCategories();
+        await GetSubCategories();
+    }
+
+    private async Task GetCategories()
+    {
+        categories = await categoryService.GetCategoriesAsync();
+    }
+
+    private async Task GetSubCategories()
+    {
+        var subCategories = await subCategoryService.GetsubCategoriessAsync();
+        var categoryList = await categoryService.GetCategoriesAsync();
+
+        SubCategories = subCategories.Select(sc => new SubCategories
+        {
+            SubCategoryId = sc.SubCategoryId,
+            Name = sc.Name,
+            CategoryName = categoryList.FirstOrDefault(c => c.CategoryId == sc.CategoryId)?.CategoryName
+        }).ToList();
+    }
+
+
+    private bool Search(SubCategories subCategory)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+        return subCategory.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task Save()
+    {
+        await subCategoryService.AddSubcategoryAsync(subCategory);
+        subCategory = new SubCategories();
+        snackBar.Add("SubCategory Saved.", Severity.Success);
+        await GetSubCategories();
+    }
+
+    private void Edit(int subCategoryId)
+    {
+        subCategory = SubCategories.FirstOrDefault(c => c.SubCategoryId == subCategoryId);
+    }
+
+    private async Task Delete(int subCategoryId)
+    {
+        await subCategoryService.DeleteSubCategoryAsync(subCategoryId);
+        snackBar.Add("SubCategory Deleted.", Severity.Success);
+        await GetSubCategories();
+    }
+}

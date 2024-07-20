@@ -1,0 +1,131 @@
+﻿@page "/Category"
+@inject MudBlazor.ISnackbar snackBar
+@inject CategoryService categoryService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+@attribute [Authorize]
+
+<h3>Categories</h3>
+<MudCard Elevation="25">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Add / Edit Categories</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="category.CategoryName" Label="Category Name" Variant="Variant.Text" Margin="Margin.Normal"></MudTextField>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="category.Description" Label="Description" Variant="Variant.Text" Margin="Margin.Normal"></MudTextField>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudFileUpload T="IBrowserFile" FilesChanged="HandleFileSelected">
+                    <ActivatorContent>
+                        <MudFab Color="Color.Secondary"
+                                StartIcon="@Icons.Material.Filled.Image"
+                                Label="Load picture" />
+                    </ActivatorContent>
+                </MudFileUpload>
+            </MudItem>
+        </MudGrid>
+        <br />
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save">Save Category</MudButton>
+    </MudCardContent>
+</MudCard>
+
+<MudTable Elevation="25" Items="@Categories" Filter="new Func<Categories, bool>(Search)" @bind-SelectedItem="category">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Customers</MudText>
+        <MudToolBarSpacer />
+        <MudTextField @bind-Value="searchString" Placeholder="Search for Customers..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Category Name</MudTh>
+        <MudTh>Image Name</MudTh>
+        <MudTh>Image URL</MudTh>
+        <MudTh>Image Format</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Category Name">@context.CategoryName</MudTd>
+        <MudTd DataLabel="Image Name">@context.ImageName</MudTd>
+        <MudTd DataLabel="Image URL">@context.ImageUrl</MudTd>
+        <MudTd DataLabel="Image Format">@context.ImageFormat</MudTd>
+        <MudTd DataLabel="">
+            <MudIconButton @onclick="@(() => Edit(@context.CategoryId))" Color="Color.Primary" Icon="@Icons.Material.Filled.Edit" Size="Size.Small" IconSize="Size.Small" />
+            <MudIconButton @onclick="@(() => Delete(@context.CategoryId))" Color="Color.Secondary" Icon="@Icons.Material.Filled.Delete" Size="Size.Small" IconSize="Size.Small" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private string searchString = "";
+    private Categories category = new Categories();
+    private List<Categories> Categories = new List<Categories>();
+    private IBrowserFile uploadedFile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCategories();
+    }
+
+    private async Task GetCategories()
+    {
+        Categories = await categoryService.GetCategoriesAsync();
+    }
+
+    private bool Search(Categories category)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+        return category.CategoryName.Contains(searchString, StringComparison.OrdinalIgnoreCase)
+            || category.Description.Contains(searchString, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task Save()
+    {
+        await categoryService.AddcategoryAsync(category);
+        category = new Categories();
+        snackBar.Add("Category Saved.", Severity.Success);
+        await GetCategories();
+    }
+
+    private void Edit(int categoryId)
+    {
+        category = Categories.FirstOrDefault(c => c.CategoryId == categoryId);
+    }
+
+    private async Task Delete(int categoryId)
+    {
+        await categoryService.DeleteCategoryAsync(categoryId);
+        snackBar.Add("Category Deleted.", Severity.Success);
+        await GetCategories();
+    }
+
+    private async Task HandleFileSelected(IBrowserFile imagefile)
+    {
+        if (imagefile != null)
+        {
+            var uniqueFileName = $"{Guid.NewGuid()}{Path.GetExtension(imagefile.Name)}";
+
+            var filePath = Path.Combine("wwwroot/images", uniqueFileName);
+
+            using (var stream = imagefile.OpenReadStream())
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await stream.CopyToAsync(fileStream);
+            }
+            using (var memoryStream = new MemoryStream())
+            {
+                await imagefile.OpenReadStream().CopyToAsync(memoryStream);
+                category.Image = memoryStream.ToArray();
+            }
+
+            category.ImageName = uniqueFileName;
+            category.ImageFormat = Path.GetExtension(imagefile.Name).TrimStart('.');
+            category.ImageUrl = $"/images/{uniqueFileName}";
+        }
+    }
+}

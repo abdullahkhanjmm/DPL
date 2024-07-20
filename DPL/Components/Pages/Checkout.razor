@@ -1,0 +1,38 @@
+﻿@page "/checkout"
+@inject CartService CartService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<h3>Checkout</h3>
+
+<MudTable Items="CartService.GetCartItems()" Hover="true" Striped="true">
+    <HeaderContent>
+        <MudTh>Product Name</MudTh>
+        <MudTh>Price</MudTh>
+        <MudTh>Quantity</MudTh>
+        <MudTh>Total Price</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.ProductName</MudTd>
+        <MudTd>@context.Price</MudTd>
+        <MudTd>@context.Quantity</MudTd>
+        <MudTd>@(context.Price * context.Quantity)</MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemoveFromCart(context.ProductId))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<div class="d-flex justify-content-end mt-4">
+    <MudText Typo="Typo.h6">Total Cart Price: $@TotalCartPrice</MudText>
+</div>
+
+@code {
+    private decimal TotalCartPrice => CartService.GetCartItems().Sum(item => item.Price * item.Quantity);
+
+    private void RemoveFromCart(int productId)
+    {
+        CartService.RemoveFromCart(productId);
+    }
+}
