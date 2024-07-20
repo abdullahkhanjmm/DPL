@@ -66,4 +66,23 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 
+await EnsureDatabaseMigratedAsync(app);
 app.Run();
+static async Task EnsureDatabaseMigratedAsync(IHost app)
+{
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
+
+        Console.WriteLine("Database is up-to-date.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"An error occurred while ensuring the database is up-to-date: {ex.Message}");
+    }
+}
